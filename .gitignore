@@ -6,8 +6,9 @@
 !*.*
 !*/
 
-# big text
+# big text and pdfs
 *.txt
+*.pdf
 
 # Executables
 *.exe
