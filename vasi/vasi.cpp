@@ -91,6 +91,13 @@ struct Treap{
 	}
 };
 
+struct Treap{
+	Treap *right, *left;
+	int key, pri, size;
+};
+
+
+
 int main(){
 
 	int N, M;
