@@ -54,8 +54,7 @@ struct ST{
 int check(long long diffidenza, ST& segtree, vector<long long>& pref, int N, int K){
 	int p = 0;
 	for (int i = 0; i < K && p < N; i++){
-		int r = segtree.right_bound(p, N+1, diffidenza + pref[p]);
-		p = r + 1;
+		p = segtree.right_bound(p, N+1, diffidenza + pref[p]);
 	}
 	return p == N;
 }
