@@ -36,12 +36,12 @@ int nth_elem(int x){
 const int INF = 1e9+42;
 vector<vector<int>> G;
 vector<int> sort_dolcezza, comp_dolcezza;
-int dfs(int u, vector<int>& C, int p = 0, int minmax = 0){
+int dfs(int u, vector<int>& C, int p = -1, int minmax = 0){
 
 	add(comp_dolcezza[u], 1);
-	
-	if (G[u].size() == 1){
-		int ans = sort_dolcezza[nth_elem(C[u])];
+
+	if (G[u].size() == 1 && p != -1){
+		int ans = nth_elem(C[u]);
 		add(comp_dolcezza[u], -1);
 		return ans;
 	}
@@ -80,23 +80,7 @@ int visita(int N, vector<int> &A, vector<int> &B, vector<int> &dolcezza, vector<
 		x = lower_bound(sort_dolcezza.begin(), sort_dolcezza.end(), x) - sort_dolcezza.begin();
 
 	int ans = dfs(0, C);
+	ans = sort_dolcezza[ans];
 
 	return ans;
-}
-
-int main(){
-	int N;
-	cin >> N;
-	vector<int> dolcezza(N), C(N), A(N - 1), B(N - 1);
-	for (int i = 0; i < N; i++) {
-		cin >> dolcezza[i];
-	}
-	for (int i = 0; i < N; i++) {
-		cin >> C[i];
-	}
-	for (int i = 0; i < N - 1; i++) {
-		cin >> A[i] >> B[i];
-	}
-	cout << visita(N, A, B, dolcezza, C) << endl;
-	return 0;
 }
