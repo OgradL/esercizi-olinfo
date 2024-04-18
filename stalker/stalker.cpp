@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include <math.h>
+#include <algorithm>
 using namespace std;
 
 struct Node{
@@ -13,19 +15,27 @@ struct Node{
 
 struct ST{
 	int n;
+	int real_size;
 	vector<Node> nodes;
+
+	ST(int N){
+		n = N;
+		real_size = 1LL<<(int)ceil(log2(n));
+		nodes.assign(2 * real_size, Node(1e18));
+	}
 
 	ST(vector<long long>& V){
 
 		n = V.size();
-		nodes.assign(4 * n, Node());
+		real_size = 1LL<<(int)ceil(log2(n));
+		nodes.assign(2 * real_size, Node());
 
 		build(1, 0, n, V);
 	}
 
 	void build(int u, int l, int r, vector<long long>& V){
 		if (r - l == 1){
-			nodes[u] = Node(l < n ? V[l] : 0);
+			nodes[u] = Node(l < n ? V[l] : 1e18);
 			return;
 		}
 
@@ -34,29 +44,55 @@ struct ST{
 		nodes[u].merge(nodes[u*2], nodes[u*2+1]);
 	}
 
-	int right_bound(int u, int l, int r, int x, int y, long long val){
-		if (r <= x || y <= l) return -1;
-		if (nodes[u].mi > val) return -1;
-		if (r - l == 1) return l;
-
-		int right = right_bound(u*2+1, (l+r)/2, r, x, y, val);
-		if (right != -1) return right;
-
-		int left = right_bound(u * 2, l, (l+r)/2, x, y, val);
-		return left;
+	void update(int u, long long d){
+		u += real_size;
+		nodes[u] = min(nodes[u].mi, d);
+		while (u > 1){
+			u /= 2;
+			nodes[u].merge(nodes[u*2], nodes[u*2+1]);
+		}
 	}
 
-	int right_bound(int x, int y, long long val){
-		return right_bound(1, 0, n, x, y, val);
+	long long get_min(int u, int l, int r, int x, int y){
+		if (r <= x || y <= l) return 1e18;
+		if (x <= l && r <= y) return nodes[u].mi;
+		return min(
+			get_min(u * 2, l, (l+r)/2, x, y),
+			get_min(u*2+1, (l+r)/2, r, x, y)
+		);
+	}
+
+	long long get_min(int l, int r){
+		return get_min(1, 0, real_size, l, r);
 	}
 };
 
-int check(long long diffidenza, ST& segtree, vector<long long>& pref, int N, int K){
-	int p = 0;
-	for (int i = 0; i < K && p < N; i++){
-		p = segtree.right_bound(p, N+1, diffidenza + pref[p]);
+int check(long long diffidenza, vector<long long>& pref, int N, int K){
+	vector<long long> compr;
+	for (int i = 0; i <= N; i++){
+		compr.push_back(pref[i]);
+		compr.push_back(pref[i] + diffidenza);
 	}
-	return p == N;
+	vector<long long> values = compr;
+	compr.erase(unique(compr.begin(), compr.end()), compr.end());
+	sort(compr.begin(), compr.end());
+
+	for (long long& x : values){
+		x = lower_bound(compr.begin(), compr.end(), x) - compr.begin();
+	}
+
+	int n = compr.size();
+	ST segtree(n);
+
+	int idx = max_element(pref.begin(), pref.end()) - pref.begin();
+	segtree.update(values[2*idx], 0);
+	
+	for (int i = N; i >= 0; i--){
+		long long v = segtree.get_min(0, values[2*i+1]+1);
+		segtree.update(values[2*i], v+1);
+	}
+
+	return segtree.get_min(values[0], values[0]+1) <= K;
 }
 
 long long stalkera(int N, int K, vector<int> S){
@@ -65,29 +101,19 @@ long long stalkera(int N, int K, vector<int> S){
 	pref[0] = 0;
 	for (int i = 0; i < N; i++)
 		pref[i+1] = pref[i] + S[i];
-	
-	ST segtree(pref);
 
-	long long lo = -10, hi = 10, mid;
+	long long sum = 0;
+	for (int i = 0; i < N; i++)
+		sum += S[i];
+
+	long long lo = sum < 0 ? sum-1 : -1e15, hi = 1e15, mid;
 	while (lo + 1 < hi){
 		mid = (lo + hi) / 2;
-		if (check(mid, segtree, pref, N, K))
+		if (check(mid, pref, N, K))
 			hi = mid;
 		else
 			lo = mid;
 	}
 
 	return hi;
-}
-
-int main() {
-    int N, K;
-    cin >> N >> K;
-
-    vector<int> S(N);
-    for (auto &s: S) {
-        cin >> s;
-    }
-
-    cout << stalkera(N, K, S) << '\n';
 }
