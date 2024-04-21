@@ -74,7 +74,6 @@ int check(long long diffidenza, vector<long long>& pref, int N, int K){
 		compr.push_back(pref[i] + diffidenza);
 	}
 	vector<long long> values = compr;
-	compr.erase(unique(compr.begin(), compr.end()), compr.end());
 	sort(compr.begin(), compr.end());
 
 	for (long long& x : values){
@@ -84,8 +83,7 @@ int check(long long diffidenza, vector<long long>& pref, int N, int K){
 	int n = compr.size();
 	ST segtree(n);
 
-	int idx = max_element(pref.begin(), pref.end()) - pref.begin();
-	segtree.update(values[2*idx], 0);
+	segtree.update(values[2*N], 0);
 	
 	for (int i = N; i >= 0; i--){
 		long long v = segtree.get_min(0, values[2*i+1]+1);
@@ -106,7 +104,10 @@ long long stalkera(int N, int K, vector<int> S){
 	for (int i = 0; i < N; i++)
 		sum += S[i];
 
-	long long lo = sum < 0 ? sum-1 : -1e15, hi = 1e15, mid;
+	long long lo = sum < 0 ? sum-1 : 0,
+			  hi = sum >= 0 ? sum : 0,
+			  mid;
+	
 	while (lo + 1 < hi){
 		mid = (lo + hi) / 2;
 		if (check(mid, pref, N, K))
