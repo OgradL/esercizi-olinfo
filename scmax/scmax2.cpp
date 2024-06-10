@@ -7,7 +7,7 @@ struct FenwickTree {
 	int n;
 
 	FenwickTree(int N) {
-		n = N + 2;
+		n = N + 1;
 		fen.assign(n, 0);
 	}
 
@@ -16,17 +16,13 @@ struct FenwickTree {
 			upd(i, a[i]);
 	}
 
-	int get_max(int r) {
+	int get_max(int idx) {
 		int ret = 0;
-		for (++r; r > 0; r -= r & -r){
-			ret = max(ret, fen[r]);
+		for (++idx; idx > 0; idx -= idx & -idx){
+			ret = max(ret, fen[idx]);
 		}
 		return ret;
 	}
-
-	// int sum(int l, int r) {
-	// 	return sum(r) - sum(l - 1);
-	// }
 
 	void upd(int idx, int delta) {
 		for (++idx; idx < n; idx += idx & -idx){
@@ -37,6 +33,10 @@ struct FenwickTree {
 
 int main(){
 
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+	cout.tie(0);
+
 	int N;
 	cin >> N;
 
@@ -46,22 +46,17 @@ int main(){
 	
 	for (int &n : C)
 		cin >> n;
-	
 
 	vector<int> vm(N + 1, 0);
 	FenwickTree fentree(N);
 	int v = 0;
 	for (int i = 0; i < N; i++){
-		v = fentree.get_max(P[i] - 1);
-		cout << i << " " << v << "\n";
-		v = max(v, vm[P[i]]);
-		v++;
-		cout << i << " " << v << "\n";
-		vm[C[i]] = max(vm[C[i]], v);
-		fentree.upd(P[i], v);
+		v = max(fentree.get_max(P[i] - 2), vm[P[i]]) + 1;
+		vm[C[P[i]-1]] = max(vm[C[P[i]-1]], v);
+		fentree.upd(P[i]-1, v);
 	}
 
-	cout << fentree.get_max(N) << "\n";
+	cout << fentree.get_max(N-1) << "\n";
 
 	return 0;
 }

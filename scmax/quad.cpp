@@ -20,7 +20,7 @@ int main(){
 	for (int i = N-1; i >= 0; i--){
 		v = 0;
 		for (int j = i+1; j < N; j++){
-			if ((P[j] > P[i]) || (P[j] == C[i]))
+			if ((P[j] > P[i]) || (P[j] == C[P[i]-1]))
 				v = max(dp[j], v);
 		}
 		v++;
