@@ -2,7 +2,7 @@
 #include <vector>
 #include <queue>
 #include <variant>
-#include <assert.h>
+#include <functional>
 using namespace std;
 
 variant<bool, vector<int>> find_tour(int N, vector<int> A){
@@ -14,6 +14,18 @@ variant<bool, vector<int>> find_tour(int N, vector<int> A){
 		G[a].push_back(b);
 		G[b].push_back(a);
 	};
+
+	function<int(int, int)> dfs;
+	dfs = [&](int n, int p){
+		for (int x : G[n]){
+			if (x == p) continue;
+			return dfs(x, n);
+		}
+		return n;
+	};
+
+	vector<int> tour;
+	tour.push_back(0);
 
 	open.push_back(0);
 	add_edge(0, N-1);
@@ -45,6 +57,8 @@ variant<bool, vector<int>> find_tour(int N, vector<int> A){
 			}
 		}
 	}
+	if (open.size() != 0)
+		return false;
 	
 	vector<int> tour(N);
 	int idx = 0, prev = N-1;
