@@ -3,47 +3,61 @@
 #include <algorithm>
 using namespace std;
 
+int flip(int idx, int i0, int i1){
+	return (idx == i0) ? i1 : (idx == i1) ? i0 : idx;
+}
+
+void solve(){
+
+	string s;
+	cin >> s;
+
+	int N = s.size();
+
+	vector<int> S(N);
+	for (int i = 0; i < N; i++)
+		S[i] = s[i] - '0';
+
+	vector<vector<int>> dp(10, vector<int>(10, 0));
+	for (int i0 = 0; i0 < 10; i0++){
+		for (int i1 = 0; i1 < 10; i1++){
+			dp[i0][i1] = max(i0, i1);
+		}
+	}
+	int clean = 0, last = 0, delta;
+	for (int i = 0; i < N; i++){
+		for (int i0 = 0; i0 < 10; i0++){
+			for (int i1 = 0; i1 < 10; i1++){
+				int idx0 = flip(S[i], i0, i1);
+				int idx1 = flip(last, i0, i1);
+				int steps0 = abs(idx0 - idx1);
+				int steps1 = abs(idx0 - last);
+				dp[i0][i1] = min(dp[i0][i1] + steps0, clean + steps1);
+			}
+		}
+		clean += abs(S[i] - last);
+		last = S[i];
+	}
+
+	int ans = clean;
+	for (int i0 = 0; i0 < 10; i0++)
+		for (int i1 = 0; i1 < 10; i1++)
+			ans = min(ans, dp[i0][i1]);
+
+	cout << ans << "\n";
+
+}
+
 int main(){
+
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+	cout.tie(0);
 
 	int T;
 	cin >> T;
 
-	while (T--){
-
-		string s;
-		cin >> s;
-
-		int N = s.size();
-
-		vector<int> S(N);
-		for (int i = 0; i < N; i++)
-			S[i] = s[i] - '0';
-
-		vector<vector<int>> dp(10, vector<int>(10, 0)), next;
-		int step = 0, last = 0, delta;
-		for (int i = 0; i < N; i++){
-			next.assign(10, vector<int>(10, 1e9));
-			for (int j = 0; j < 10; j++){
-				for (int k = 0; k < 10; k++){
-					int na = S[i] == j ? k : (S[i] == k ? j : S[i]);
-					int nb = i == 0 ? 0 : (S[i-1] == j ? k : (S[i-1] == k ? j : S[i-1]));
-					delta = abs(na - nb);
-					next[j][k] = min(dp[j][k] + delta, step + delta);
-					// cout << i << " " << j << " " << k << " " << delta << " " << next[j][k] << "\n";
-				}
-			}
-			step += abs(S[i] - last);
-			dp = next;
-			last = S[i];
-		}
-
-		int ans = step;
-		for (int i = 0; i < 10; i++)
-			for (int j = 0; j < 10; j++)
-				ans = min(ans, dp[i][j]), cout << i << " " << j << " " << dp[i][j] << "\n";
-
-		cout << ans << "\n";
-	}
+	while (T--) solve();
 
 	return 0;
 }
