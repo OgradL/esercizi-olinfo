@@ -13,9 +13,9 @@ struct minStack{
 		cnt_added = 0;
 		cnt_removed = 0;
 	}
-	pair<int, int> top(){
-		if (q.empty()) return {1e9, 1e9};
-		return q.front();
+	int top(){
+		if (q.empty()) return 1e9;
+		return q.front().first;
 	}
 	void push(int new_element){
 		while (!q.empty() && !comp{}(q.back().first, new_element))
@@ -32,32 +32,26 @@ struct minStack{
 
 int main(){
 
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+	cout.tie(0);
+
 	int N, K, M, P, Q;
 	cin >> N >> K >> M >> P >> Q;
 
 	minStack<less<int>> minst[2];
 
-	vector<int> dp(N+1, 0);
-	dp[0] = P - Q;
-	int k = 0;
-	for (int i = 1; i < N; i++){
-		int a = -dp[k] - ((i-k)%2)*M;
-		int b = 1e9;
-		if (i-k!=1)
-			b = dp[k+1] - ((i-k-1)%2)*M;
-		int c = dp[i-1] - M;
-		int d = 1e9;
-		if (i>1)
-			d = dp[i-2];
+	int ans = 0;
+	minst[0].push(Q - P);
+	for (int i = 1; i <= N; i++){
+		minst[i&1].push(ans = max(-minst[i&1].top(), -minst[(i&1)^1].top() - M));
 
-		dp[i] = max(max(a, b), max(c, d));
-		cout << a << " " << b << " " << c << " " << d << " - " << dp[i] << " " << i << " " << k << "\n";
-		if (i - k > K){
-			k++;
+		if (i - K >= 0){
+			minst[(i-K)&1].pop();
 		}
 	}
 
-	cout << dp[N] << "\n";
+	cout << ans << "\n";
 
 	return 0;
 }
