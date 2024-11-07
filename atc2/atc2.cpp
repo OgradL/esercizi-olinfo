@@ -1,84 +1,51 @@
 #include <iostream>
 #include <vector>
-#include <set>
-#include <queue>
-#include <algorithm>
 using namespace std;
 
-#define f first
-#define s second
-
-vector<pair<int, int>> to;
-
-struct comp{
-	const bool operator() (const pair<int, int> a, const pair<int, int> b) const {
-		return (to[a.f].f-to[a.s].f)*(to[a.f].f-to[a.s].f) + (to[a.f].s-to[a.s].s)*(to[a.f].s-to[a.s].s) < 
-			(to[b.f].f-to[b.s].f)*(to[b.f].f-to[b.s].f) + (to[b.f].s-to[b.s].s)*(to[b.f].s-to[b.s].s);
-	}
-};
-
-struct DSU{
-	int N;
-	vector<int> parent, sizes;
-	DSU(int n){
-		N = n+1;
-		parent.assign(N, -1);
-		sizes.assign(N, 1);
-	}
-
-	void make_set(int v){
-		if (parent[v] != -1) return;
-		parent[v] = v;
-		sizes[v] = 1;
-	}
-	int find_parent(int v){
-		make_set(v);
-		if (parent[v] == v) return v;
-		return parent[v] = find_parent(parent[v]);
-	}
-	int union_set(int a, int b){
-		a = find_parent(a);
-		b = find_parent(b);
-		if (a != b){
-			if (sizes[a] < sizes[b])
-				swap(a, b);
-			sizes[a] += sizes[b];
-			parent[b] = a;
-			return 1;
-		}
-		return 0;
-	}
-};
+int dist(const pair<int, int>& a, const pair<int, int>& b){
+	int dx = a.first - b.first;
+	int dy = a.second - b.second;
+	return dx * dx + dy * dy;
+}
 
 int main(){
 
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+	cout.tie(0);
+
 	int N;
 	cin >> N;
+
+	vector<pair<int, int>> towers;
 
 	string s;
 	for (int j = 0; j < N; j++){
 		cin >> s;
 		for (int i = 0; i < N; i++){
-			if (s[i] == 'T') to.emplace_back(i, j);
+			if (s[i] == 'T') towers.emplace_back(i, j);
 		}
 	}
 
-	set<pair<int, int>, comp> edges;
-	int k = 0;
-	for (int i = 0; i < to.size(); i++){
-		for (int j = i + 1; j < to.size(); j++){
-			edges.insert({i, j});
-			if (edges.size() > to.size() * 300)
-				edges.erase(prev(edges.end()));
-		}
-	}
-
-	DSU dsu(to.size());
-
+	N = towers.size();
+	vector<int> mindist(N, 1e9);
+	vector<int> visited(N, 0);
+	int closest = 0;
+	mindist[0] = 0;
 	long long ans = 0;
-	for (pair<int, int> e : edges){
-		if (dsu.union_set(e.f, e.s)){
-			ans += (to[e.f].f-to[e.s].f)*(to[e.f].f-to[e.s].f) + (to[e.f].s-to[e.s].s)*(to[e.f].s-to[e.s].s);
+
+	while (closest != -1){
+		ans += mindist[closest];
+		visited[closest] = 1;
+		for (int i = 0; i < N; i++){
+			if (!visited[i])
+				mindist[i] = min(mindist[i], dist(towers[i], towers[closest]));
+		}
+
+		closest = -1;
+		for (int i = 0; i < N; i++){
+			if (!visited[i] && (closest == -1 || mindist[i] < mindist[closest]))
+				closest = i;
 		}
 	}
 
