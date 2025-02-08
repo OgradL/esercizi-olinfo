@@ -3,64 +3,73 @@
 #include <queue>
 using namespace std;
 
-void Bake(int K);
+using pll = pair<long long, long long>;
 
-int order_num;
-int quantity[8];
-queue<int> ordini[1<<8];
+int main(){
 
-void Init(){
-	order_num = 0;
-}
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+	cout.tie(0);
 
-void Order(int N, int *A){
-	short ingr = 0;
-	bool ok = true;
+	int N, M, Q;
+	cin >> N >> M >> Q;
+
+	vector<long long> A(N), B(N);
 	for (int i = 0; i < N; i++){
-		ok &= quantity[A[i]] > 0;
-		ingr |= 1 << A[i];
+		cin >> A[i] >> B[i];
 	}
-	if (ok){
-		Bake(order_num);
-		for (int i = 0; i < N; i++)
-			quantity[A[i]]--;
-	} else {
-		ordini[ingr].push(order_num);
-	}
-	order_num++;
-}
 
-void Delivery(int I){
-	quantity[I]++;
+	vector<int> pizzas(M, 0);
+	for (int& x : pizzas){
+		int K;
+		cin >> K;
 
-	if (quantity[I] > 1)
-		return;
-
-	int t_ready = 1e9;
-	short mask_ready;
-	for (short mask = 0; mask < (1<<8); mask++){
-		if (!(mask & (1<<I)) || ordini[mask].empty())
-			continue;
-		
-		bool ok = true;
-		for (int i = 0; i < 8; i++)
-			if (mask & (1<<i))
-				ok &= quantity[i] > 0;
-
-
-		if (ok && t_ready > ordini[mask].front()){
-			mask_ready = mask;
-			t_ready = ordini[mask].front();
+		int i;
+		while (K--){
+			cin >> i;
+			x += 1 << i;
 		}
 	}
 
-	if (t_ready == 1e9)
-		return;
+	vector<long long> D(1<<N, 1e18);
+	priority_queue<pll, vector<pll>, greater<pll>> pq;
+	
+	for (int x : pizzas){
+		D[x] = 0;
+		pq.push({0, x});
+	}
 
-	Bake(t_ready);
-	ordini[mask_ready].pop();
-	for (int i = 0; i < 8; i++)
-		if (mask_ready & (1<<i))
-			quantity[i]--;
+	vector<int> seen(1<<N, 0);
+
+	while (!pq.empty()){
+		auto [d, x] = pq.top();
+		pq.pop();
+
+		if (seen[x]) continue;
+		seen[x] = 1;
+
+		for (int i = 0; i < N; i++){
+			long long cost = (x & (1 << i)) ? B[i] : A[i];
+			int v = x ^ (1 << i);
+			if (d + cost < D[v]){
+				D[v] = d + cost;
+				pq.push({D[v], v});
+			}
+		}
+	}
+
+	while (Q--){
+		int K, x = 0;
+		cin >> K;
+
+		int i;
+		while (K--){
+			cin >> i;
+			x += 1 << i;
+		}
+
+		cout << D[x] << "\n";
+	}
+
+	return 0;
 }
-
