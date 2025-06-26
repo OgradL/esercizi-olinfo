@@ -1,117 +1,196 @@
-#include <array>
-#include <cassert>
-#include <iostream>
-#include <utility>
 #include <vector>
+#include <algorithm>
+#include <array>
 using namespace std;
 
-struct point{
-	int y, x, r;
+struct Node{
+	int L, R;
+	int ma, lazyAdd;
+
+	Node(){
+		L = R = -1;
+		ma = lazyAdd = 0;
+	}
+
+	void merge(int left, int right);
 };
 
-int n, s, f;
-vector<vector<int>> pref;
-
-long long get_area(int x0, int y0, int x1, int y1){
-	// if (x0 > x1)
-	// 	swap(x0, x1);
-	// if (y0 > y1)
-	// 	swap(y0, y1);
-	
-	if (x1 < 0)
-		return 0;
-	if (y1 < 0)
-		return 0;
-
-	if (x1 >= s)
-		x1 = s-1;
-	if (y1 >= s)
-		y1 = s-1;
-	
-	long long ans = pref[y1][x1];
-	
-	if (x0 > 0)
-		ans -= pref[y1][x0-1];
-	
-	if (y0 > 0)
-		ans -= pref[y0-1][x1];
-	
-	if (x0 > 0 && y0 > 0)
-		ans += pref[y0-1][x0-1];
-	
-	return ans;
+Node nodes[1<<24];
+int alloc_idx = 0;
+int get_node(){
+	nodes[alloc_idx].L = -1;
+	nodes[alloc_idx].R = -1;
+	nodes[alloc_idx].ma = 0;
+	nodes[alloc_idx].lazyAdd = 0;
+	alloc_idx++;
+	return alloc_idx-1;
 }
 
+void Node::merge(int left, int right){
+	L = left;
+	R = right;
+	ma = lazyAdd = 0;
+	if (L != -1)
+		ma = max(ma, nodes[L].ma);
+	if (R != -1)
+		ma = max(ma, nodes[R].ma);
+}
 
-void calc_area(vector<int>& y, vector<int>& x){
-	pref.assign(s, vector<int>(s, 0));
-	for (int i = 0; i < n; i++){
-		pref[y[i]][x[i]]++;
+struct SegmentTree{
+
+	int sz;
+	int root;
+
+	SegmentTree(int N){
+		sz = 1;
+		while (sz < N)
+			sz *= 2;
+
+		root = get_node();
 	}
-	// cout << pref[0][0] << " ";
-	for (int i = 1; i < s; i++){
-		pref[i][0] += pref[i-1][0];
-		pref[0][i] += pref[0][i-1];
-		// cout << pref[0][i] << " ";
-	}
-	// cout << "\n";
-	for (int i = 1; i < s; i++){
-		// cout << pref[i][0] << " ";
-		for (int j = 1; j < s; j++){
-			pref[i][j] += pref[i-1][j] + pref[i][j-1] -
-							pref[i-1][j-1];
-			// cout << pref[i][j] << " ";
+
+	void fix_lazy(int node, int l, int r){
+		nodes[node].ma += nodes[node].lazyAdd;
+
+		if (r - l > 1){
+			if (nodes[node].L == -1)
+				nodes[node].L = get_node();
+			nodes[nodes[node].L].lazyAdd += nodes[node].lazyAdd;
+
+			if (nodes[node].R == -1)
+				nodes[node].R = get_node();
+			nodes[nodes[node].R].lazyAdd += nodes[node].lazyAdd;
 		}
-		// cout << "\n";
-	}
-}
 
-int try_center(int y, int x){
-	long long lo = 0, hi = (n+f)/4+2, mid, area;
-	while (lo + 1 < hi){
-		mid = (lo + hi) / 2;
-		area = 0;
-		area += get_area(x - mid, y, x, y);
-		area += get_area(x, y, x + mid, y);
-		area += get_area(x, y - mid, x, y);
-		area += get_area(x, y, x, y + mid);
-		area -= 3 * get_area(x, y, x, y);
-		if ((4*mid+1) <= (area + f))
-			lo = mid;
-		else
-			hi = mid;
+		nodes[node].lazyAdd = 0;
 	}
-	return lo;
-}
 
-point best(point a, point b){
-	if (a.r > b.r)
-		return a;
-	if (a.r < b.r)
-		return b;
-	if (make_pair(a.y, a.x) < make_pair(b.y, b.x))
-		return a;
-	return b;
-}
+	void range_add(int node, int l, int r, int x, int y, int d){
+		fix_lazy(node, l, r);
+		if (r <= x || y <= l)
+			return;
+
+		if (x <= l && r <= y){
+			nodes[node].lazyAdd += d;
+			fix_lazy(node, l, r);
+			return;
+		}
+
+		range_add(nodes[node].L, l, (l+r)/2, x, y, d);
+		range_add(nodes[node].R, (l+r)/2, r, x, y, d);
+		nodes[node].merge(nodes[node].L, nodes[node].R);
+	}
+
+	void range_add(int x, int y, int d){
+		range_add(root, 0, sz, x, y, d);
+	}
+
+	int first_greater(int node, int l, int r, int v){
+		fix_lazy(node, l, r);
+		if (nodes[node].ma < v)
+			return -1;
+
+		if (r - l <= 1)
+			return l;
+
+		int le = first_greater(nodes[node].L, l, (l+r)/2, v);
+		if (le != -1)
+			return le;
+
+		int ri = first_greater(nodes[node].R, (l+r)/2, r, v);
+		return ri;
+	}
+
+	int first_greater(int v){
+		return first_greater(root, 0, sz, v);
+	}
+};
 
 array<int, 3> find_plus(int N, int S, int F, vector<int> y, vector<int> x){
-	n = N;
-	s = S;
-	f = F;
-	int v;
 
-	calc_area(y, x);
-	point ans = {0, 0, 0};
+	vector<pair<int, int>> points;
 	for (int i = 0; i < N; i++){
-		for (int j = i+1; j < N; j++){
-			if (v = try_center(y[i], x[j])){
-				ans = best(ans, (point){y[i], x[j], v});
+		points.push_back({x[i], y[i]});
+	}
+
+	sort(points.begin(), points.end(), [](const pair<int, int>& a, const pair<int, int>& b){
+		if (a.second == b.second)
+			return a.first < b.first;
+		return a.second < b.second;
+	});
+
+	auto check = [&](int L) -> pair<int, int> {
+
+		if (F >= 4*L + 1)
+			return {0, 0};
+
+		alloc_idx = 0;
+		SegmentTree st(S);
+
+		vector<int> importantY;
+
+		auto add_y = [&](int y){
+			if (0 <= y && y < S)
+				importantY.push_back(y);
+		};
+
+		for (auto [px, py] : points){
+			add_y(py);
+			add_y(py + L);
+			add_y(py - L);
+		}
+		importantY.push_back(0);
+
+		sort(importantY.begin(), importantY.end());
+		importantY.erase(unique(importantY.begin(), importantY.end()), importantY.end());
+
+		int idxa = 0, idxc = 0, idxd = 0;
+
+		for (auto y : importantY){
+			int idxp = idxc;
+
+			while (idxc < N && points[idxc].second <= y){
+				st.range_add(points[idxc].first - L, points[idxc].first, 1);
+				st.range_add(points[idxc].first + 1, points[idxc].first + L + 1, 1);
+				++idxc;
 			}
-			if (v = try_center(y[j], x[i])){
-				ans = best(ans, (point){y[j], x[i], v});
+			while (idxa < N && points[idxa].second <= y + L){
+				st.range_add(points[idxa].first, points[idxa].first + 1, 1);
+				++idxa;
+			}
+			while (idxd < N && points[idxd].second < y - L){
+				st.range_add(points[idxd].first, points[idxd].first + 1, -1);
+				++idxd;
+			}
+
+
+			int ans = st.first_greater(4 * L + 1 - F);
+			if (ans != -1 && y >= 0)
+				return {y, ans};
+
+			while (idxp < N && points[idxp].second <= y){
+				st.range_add(points[idxp].first - L, points[idxp].first, -1);
+				st.range_add(points[idxp].first + 1, points[idxp].first + L + 1, -1);
+				++idxp;
 			}
 		}
+		
+		return {-1, -1};
+	};
+
+	pair<int, int> ans;
+	int lo = (F - 1) / 4, hi = (N + F + 3) / 4, mid;
+	while (lo + 1 < hi){
+		mid = (lo + hi) / 2;
+
+		auto res = check(mid);
+		if (res.first < 0){
+			hi = mid;
+		} else {
+			ans = res;
+			lo = mid;
+		}
 	}
-	array<int, 3> ansarr = {ans.r, ans.y, ans.x};
-	return ansarr;
+
+	return {lo, ans.first, ans.second};
 }
