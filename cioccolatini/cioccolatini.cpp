@@ -1,168 +1,158 @@
-#include <iostream>
 #include <vector>
 #include <algorithm>
-#include <math.h>
 using namespace std;
 
-struct query{
-	int l, r, idx;
-};
-
-int BLOCK, BLOCK2;
-
-vector<vector<int>> G, bl;
-vector<int> tour, tin, tout;
+vector<vector<int>> adj, bl, bl2;
+vector<int> tin, tout;
 int timer = 0;
-vector<int> c;
-vector<int> active;
-vector<int> count_nums;
-vector<int> block_count;
-vector<int> compressed;
-vector<int> invcompressed;
+vector<int> dp1, dp2;
+vector<int> subtree;
+vector<int> big0, big1, big2;
+vector<int> C;
 
 void dfs(int u, int p){
 	bl[u][0] = p;
 	for (int i = 1; i < 20; i++)
 		bl[u][i] = bl[bl[u][i-1]][i-1];
 	
+	subtree[u] = C[u];
 	tin[u] = timer++;
-	tour.push_back(u);
-	for (int x : G[u]){
-		if (x != p)
-			dfs(x, u);
+	for (int x : adj[u]){
+		if (x == p) continue;
+		dfs(x, u);
+		subtree[u] = max(subtree[u], subtree[x]);
 	}
 	tout[u] = timer++;
-	tour.push_back(u);
+}
+
+int max_ex(int u, int x, int x2 = -1){
+	if (x == -1)
+		return big0[u];
+
+	if (x2 == -1)
+		return subtree[x] == big0[u] ? big1[u] : big0[u];
+
+	if (subtree[x] < subtree[x2])
+		swap(x, x2);
+
+	if (subtree[x] == big0[u] && subtree[x2] == big1[u])
+		return big2[u];
+
+	return max_ex(u, x);
+}
+
+void update_big(int u, int val){
+	if (val > big0[u]){
+		big2[u] = big1[u];
+		big1[u] = big0[u];
+		big0[u] = val;
+		return;
+	}
+	if (val > big1[u]){
+		big2[u] = big1[u];
+		big1[u] = val;
+		return;
+	}
+	if (val > big2[u]){
+		big2[u] = val;
+		return;
+	}
+}
+
+void dfs2(int u, int p, int m1 = 0, int m2 = 0){
+	bl2[u][0] = max_ex(bl[u][0], u);
+	for (int i = 1; i < 20; i++)
+		bl2[u][i] = max(bl2[u][i-1], bl2[bl[u][i-1]][i-1]);
+
+
+	for (int x : adj[u]){
+		if (x == p) continue;
+		update_big(u, subtree[x]);
+	}
+
+	dp1[u] = m1;
+	dp2[u] = big0[u];
+
+	for (int x : adj[u]){
+		if (x == p) continue;
+
+		int w_ex = max_ex(u, x);
+
+		dfs2(x, u, max({m1, w_ex, C[u]}), max(m2, w_ex));
+	}
 }
 
 bool is_ancestor(int a, int b){
 	return tin[a] <= tin[b] && tout[b] <= tout[a];
 }
 
-int lca(int a, int b){
-	if (is_ancestor(a, b))
+int lca(int a, int b, bool prev = false){
+	if (is_ancestor(a, b) && !prev)
 		return a;
-	if (is_ancestor(b, a))
+	if (is_ancestor(b, a) && !prev)
 		return b;
 	for (int i = 19; i >= 0; i--)
 		if (!is_ancestor(bl[a][i], b))
 			a = bl[a][i];
-	return bl[a][0];
+	return prev ? a : bl[a][0];
 }
 
-void add(int pos){
-	int u = tour[pos];
-	int v = c[u];
-	int idx = compressed[v];
-	block_count[idx / BLOCK2]--;
-	count_nums[idx]--;
-}
-
-void remove(int pos){
-	int u = tour[pos];
-	int v = c[u];
-	int idx = compressed[v];
-	block_count[idx / BLOCK2]++;
-	count_nums[idx]++;
-}
-
-void toggle(int pos){
-	if (!active[tour[pos]]) add(pos);
-	else remove(pos);
-	active[tour[pos]] = !active[tour[pos]];
-}
-
-int get_answer(){
-	int b = 0;
-	for (int i = 0; i < BLOCK2; i++){
-		if (block_count[i]){
-			b = i;
-			break;
+int query(int a, int l){
+	int res = 0;
+	for (int i = 19; i >= 0; i--){
+		if (!is_ancestor(bl[a][i], l)){
+			res = max(res, bl2[a][i]);
+			a = bl[a][i];
 		}
 	}
-	for (int i = BLOCK2 * b; i < BLOCK2 * (b+1); i++){
-		if (count_nums[i])
-			return invcompressed[i];
-	}
-	return 0;
+	return res;
 }
 
 vector<int> raccogli(int N, int Q, vector<int> &A, vector<int> &B, vector<int> &C, vector<int> &L, vector<int> &T){
-	c = C;
-	int maxc = *max_element(C.begin(), C.end());
+	::C = C;
 
-	G.resize(N);
+	adj.resize(N);
 	for (int i = 0; i < N-1; i++){
-		G[A[i]].push_back(B[i]);
-		G[B[i]].push_back(A[i]);
+		adj[A[i]].push_back(B[i]);
+		adj[B[i]].push_back(A[i]);
 	}
 
 	tout.resize(N);
 	tin.resize(N);
 	bl.assign(N, vector<int>(20, 0));
+	bl2.assign(N, vector<int>(20, 0));
+	dp1.assign(N, 0);
+	dp2.assign(N, 0);
+	big0.assign(N, 0);
+	big1.assign(N, 0);
+	big2.assign(N, 0);
+	subtree.assign(N, 0);
 
 	dfs(0, 0);
-
-	vector<query> queries;
-	for (int i = 0; i < Q; i++){
-		if (tin[L[i]] > tin[T[i]])
-			swap(L[i], T[i]);
-		query q = {L[i], T[i], i};
-		if (tout[L[i]] < tin[T[i]])
-			q = {tout[L[i]], tin[T[i]]+1, i};
-		else
-			q = {tin[L[i]], tin[T[i]]+1, i};
-		queries.push_back(q);
-	}
-
-	BLOCK = sqrt(N);
-	BLOCK2 = sqrt(tour.size());
-
-	sort(queries.begin(), queries.end(), [](const query& a, const query& b){
-		if (a.l / BLOCK != b.l / BLOCK){
-			return a.l < b.l;
-		} else {
-			if ((a.l / BLOCK) % 2 == 0)
-				return a.r < b.r;
-			else
-				return a.r > b.r;
-		}
-	});
-
-	active.assign(tour.size(), 0);
-	block_count.assign(BLOCK2, 0);
-	count_nums.assign(N, 0);
-
-	vector<pair<int, int>> nums;
-	for (int i = 0; i < N; i++){
-		nums.push_back({C[i], i});
-	}
-
-	sort(nums.begin(), nums.end(), [](pair<int, int> a, pair<int, int> b){
-		return a.first > b.first;
-	});
-
-	compressed.assign(maxc+1, 0);
-	invcompressed.assign(N, 0);
-	for (int i = 0; i < N; i++){
-		compressed[nums[i].first] = i;
-		invcompressed[i] = nums[i].first;
-	}
-	for (int i = 0; i < N; i++)
-		remove(tin[i]);
+	dfs2(0, 0);
 
 	vector<int> answer(Q, 0);
-	int curr_l = 0, curr_r = 0;
-	for (auto [l, r, idx] : queries){
-		while (curr_r < r) toggle(curr_r++);
-		while (curr_l > l) toggle(--curr_l);
-		while (curr_r > r) toggle(--curr_r);
-		while (curr_l < l) toggle(curr_l++);
 
-		int v = lca(tour[l], tour[r]);
-		if (tour[l] != v && tour[r] != v) toggle(tin[v]);
-		answer[idx] = get_answer();
-		if (tour[l] != v && tour[r] != v) toggle(tin[v]);
+	for (int i = 0; i < Q; i++){
+		int u = L[i], v = T[i];
+		int l = lca(u, v);
+		int u1 = -1, v1 = -1;
+
+		answer[i] = dp1[l];
+		if (l != u){
+			answer[i] = max(answer[i], dp2[u]);
+			answer[i] = max(answer[i], query(u, l));
+			u1 = lca(u, l, true);
+		}
+		if (l != v){
+			answer[i] = max(answer[i], dp2[v]);
+			answer[i] = max(answer[i], query(v, l));
+			v1 = lca(v, l, true);
+		}
+
+		if (u1 < v1)
+			swap(u1, v1);
+		answer[i] = max(answer[i], max_ex(l, u1, v1));
 	}
 
 	return answer;
