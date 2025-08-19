@@ -1,128 +1,95 @@
-#include <vector>
 #include <algorithm>
+#include <tuple>
+#include <vector>
 using namespace std;
 
-pair<int, int> max_pi(const pair<int, int>& a, const pair<int, int>& b){
-	if (a.first == b.first)
-		if (a.second < b.second)
-			return a;
-		else
-			return b;
-	if (a.first > b.first) return a;
-	return b;
+int N;
+vector<int> ans, A;
+vector<vector<int>> adj;
+vector<vector<int>> freq_stack;
+vector<int> subtree;
+
+int subtree_size(int u){
+	subtree[u] = 1;
+	if (adj[u].empty())
+		return 1;
+
+	int best = adj[u][0];
+	for (int x : adj[u]){
+		int d = subtree_size(x);
+		subtree[u] += d;
+		if (subtree[best] < d)
+			best = x;
+	}
+
+	int idx = 0;
+	for (idx = 0; idx < adj[u].size(); idx++){
+		if (adj[u][idx] == best)
+			break;
+	}
+
+	swap(adj[u][0], adj[u][idx]);
+	return subtree[u];
 }
 
+tuple<vector<int>, vector<int>, int> dfs(int u){
+	vector<int> colors;
+	vector<int> freq;
 
-struct Node{
-	pair<int, int> ma;
-	Node *left = NULL, *right = NULL;
-	Node(){
-		ma = {0, 0};
-		left = NULL;
-		right = NULL;
-	}
-	Node(Node* l, Node* r){
-		left = l;
-		right = r;
-		ma = max_pi(left->ma, right->ma);
-	}
-	Node(pair<int, int> s, Node *left_ = NULL, Node *right_ = NULL){
-		ma = s;
-		left = left_;
-		right = right_;
-	}
-	void merge(Node* a, Node* b){
-		ma = max_pi(a->ma, b->ma);
-	}
-};
+	colors.push_back(A[u]);
+	int best = A[u];
 
+	for (int x : adj[u]){
+		auto [other_colors, other_freq, other_best] = dfs(x);
 
-vector<Node*> nodes;
-void init(Node* node, int l, int r, vector<long long>& V){
-	if (r - l == 1){
-		node->ma = {V[l], l};
-		return;
+		if (colors.size() < other_colors.size() || freq.empty())
+			swap(colors, other_colors), swap(freq, other_freq), swap(best, other_best);
+
+		for (auto color : other_colors){
+			if (freq[color] == 0)
+				colors.push_back(color);
+
+			if (other_freq.empty()){
+				freq[color]++;
+			} else {
+				freq[color] += other_freq[color];
+				other_freq[color] = 0;
+			}
+
+			if ((freq[color] == freq[best] && color < best) || freq[color] > freq[best])
+				best = color;
+		}
+
+		if (!other_freq.empty()){
+			freq_stack.push_back(std::move(other_freq));
+		}
 	}
 
-	node->left = new Node();
-	node->right = new Node();
- 
-	init(node->left, l, (l+r)/2, V);
-	init(node->right, (r+l)/2, r, V);
+	if (freq.empty()){
+		freq = std::move(freq_stack.back());
+		freq_stack.pop_back();
+		freq[A[u]]++;
+	}
 
-	node->merge(node->left, node->right);
+	ans[u] = best;
+	return {std::move(colors), std::move(freq), best};
 }
 
-Node* update(Node *node, int l, int r, int k, long long x){
-	if (r - l == 1){
-		return new Node({x, l});
-	}
-	if ((l+r)/2 <= k){
-		return new Node(node->left, update(node->right, (l+r)/2, r, k, x));
-	} else {
-		return new Node(update(node->left, l, (l+r)/2, k, x), node->right);
-	}
-}
+vector<int> solve(int n, vector<int> p, vector<int> a){
 
-void make_copy(int k){
-	Node *new_node = new Node(nodes[k]->ma, nodes[k]->left, nodes[k]->right);
-	nodes.push_back(new_node);
-}
-
-pair<int, int> get_max(Node* node, int l, int r, int x, int y){
-	if (r <= x || y <= l) return {0, l};
-	if (x <= l && r <= y) return node->ma;
-	return max_pi(get_max(node->left, l, (l+r)/2, x, y),
-				  get_max(node->right, (l+r)/2, r, x, y));
-}
-
-
-int tour_idx = 0;
-vector<int> tour, fin, fout;
-void dfs(int u, vector<vector<int>>& G, vector<int>& V, int p = -1){
-	fin[u] = tour_idx;
-	tour[tour_idx++] = V[u];
-	for (int& x : G[u])
-		if (x != p)
-			dfs(x, G, V, u);
-	fout[u] = tour_idx;
-}
-
-vector<int> solve(int n, vector<int> p, vector<int> a) {
-
-	vector<vector<int>> G(n);
-
-	for (int i = 0; i < n-1; i++){
-		G[p[i]].push_back(i);
-	}
-
-	tour.resize(n);
-	fin.resize(n);
-	fout.resize(n);
-	dfs(0, G, a);
-
-
-	nodes.push_back(new Node());
-	vector<long long> zeros(n, 0);
-	init(nodes[0], 0, n, zeros);
-	
-	nodes[0] = update(nodes[0], 0, n, tour[0], 1);
-	vector<int> last(n, -1);
-	last[tour[0]] = 0;
-	
+	N = n;
+	A = a;
+	ans.resize(n);
+	adj.resize(n);
 	for (int i = 1; i < n; i++){
-		make_copy(i-1);
-		if (last[tour[i]] != -1)
-			nodes[i] = update(nodes[i], 0, n, last[tour[i]], 0);
-		last[tour[i]] = i;
-		nodes[i] = update(nodes[i], 0, n, i, 1);
+		adj[p[i]].push_back(i);
 	}
 
-	vector<int> ans(n);
+	subtree.assign(N, 0);
+	subtree_size(0);
 
-	for (int i = 0; i < n; i++){
-		ans[i] = get_max(nodes[fout[i]-1], 0, n, fin[i], fout[i]).second;
-	}
+	freq_stack.assign(20, vector<int>(N, 0));
+	dfs(0);
 
 	return ans;
 }
