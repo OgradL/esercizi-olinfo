@@ -1,7 +1,5 @@
 #include <iostream>
 #include <vector>
-#include <algorithm>
-#include <numeric>
 using namespace std;
 
 void solve(){
@@ -10,24 +8,35 @@ void solve(){
 
 	if (A < 33 || A > 53 || B >= 53){
 		cout << "-1 -1\n";
-	} else {
-		int a, b;
-		for (int i = 0; i < 2; i++){
-			a = min(A - 33, 10);
-			b = min(B, 11);
-			if (b == 11){
-				cout << a << " " << b << "\n";
-				A -= a;
-				B -= b;
-			}
-		}
-		for (int i = 0; i < 3; i++){
-			a = 11;
-			b = min(B, 10);
-			cout << a << " " << b << "\n";
-			A -= a;
-			B -= b;
-		}
+		return;
+	}
+
+	vector<pair<int, int>> ans;
+
+	int a, b;
+	while (B > 30 || A > 33){
+		a = min(A - 33, 10);
+		b = 11;
+		ans.push_back({a, b});
+		A -= a;
+		B -= b;
+	}
+
+	if (B < 0){
+		cout << "-1 -1\n";
+		return;
+	}
+
+	while (A > 0){
+		a = 11;
+		b = min(B, 10);
+		ans.push_back({a, b});
+		A -= a;
+		B -= b;
+	}
+
+	for (auto [x, y] : ans){
+		cout << x << " " << y << "\n";
 	}
 }
 
